@@ -34,11 +34,18 @@ computer's LAN IP. A `.env` file is not loaded automatically by this project.
 ### Build an APK with GitHub Actions
 
 Push the project, including `.github/workflows/android-apk.yml`, to GitHub.
-Open **Actions → Build Android APK → Run workflow**, then enter the API base
-URL reachable by your phone, including `/api/v1` (for example
-`http://192.168.1.20:3000/api/v1`). When the workflow finishes, open its run,
-download the `phoneguard-android-apk` artifact, extract it, and install the APK
-on your Android phone.
+Save the API base URL reachable by your phone as a repository Actions variable
+named `PHONEGUARD_API_URL` (or as a repository secret with the same name). For
+example, use `http://192.168.1.20:3000/api/v1`, replacing the IP with your
+computer's Wi-Fi IPv4 address. Add it once under **Settings → Secrets and
+variables → Actions**; you do not need to enter it each time you build.
+
+Then open **Actions → Build Android APK → Run workflow**. When the workflow
+finishes, open its run, download the `phoneguard-android-apk` artifact, extract
+it, and install the APK on your Android phone. GitHub-hosted runners cannot
+discover your computer's private LAN IP, so it must be saved in the repository
+setting. If your router changes the IP, update the variable or secret and build
+a new APK.
 
 Keep the API running and the phone on the same Wi-Fi as your computer when
 using a LAN address. The workflow enables HTTP for this testing APK; use HTTPS

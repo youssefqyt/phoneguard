@@ -2,11 +2,6 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
-    inputs:
-      api_url:
-        description: "API base URL reachable from your phone, including /api/v1"
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -46,7 +41,7 @@ jobs:
       - name: Set API URL in APK
         working-directory: mobile
         env:
-          PHONEGUARD_API_URL: ${{ inputs.api_url }}
+          PHONEGUARD_API_URL: ${{ vars.PHONEGUARD_API_URL || secrets.PHONEGUARD_API_URL }}
         run: node scripts/configure-api-url.js
 
       - name: Build release APK
