@@ -40,12 +40,17 @@ example, use `http://192.168.1.20:3000/api/v1`, replacing the IP with your
 computer's Wi-Fi IPv4 address. Add it once under **Settings → Secrets and
 variables → Actions**; you do not need to enter it each time you build.
 
-Then open **Actions → Build Android APK → Run workflow**. When the workflow
-finishes, open its run, download the `phoneguard-android-apk` artifact, extract
-it, and install the APK on your Android phone. GitHub-hosted runners cannot
-discover your computer's private LAN IP, so it must be saved in the repository
-setting. If your router changes the IP, update the variable or secret and build
-a new APK.
+Then open **Actions → Build Android APK → Run workflow**. You can enter the
+phone-reachable API URL in the `api_url` input; it overrides the saved variable
+or secret. If none is provided, the workflow uses the Android emulator URL
+`http://10.0.2.2:3000/api/v1`, so the APK can still build without repository
+secrets. That fallback works only on an emulator, not a physical phone.
+
+When the workflow finishes, open its run, download the `phoneguard-android-apk`
+artifact, extract it, and install the APK on your Android phone. GitHub-hosted
+runners cannot discover your computer's private LAN IP, so for a physical phone
+enter that reachable URL when starting the workflow or save it as the repository
+variable/secret. If your router changes the IP, update it and build a new APK.
 
 Keep the API running and the phone on the same Wi-Fi as your computer when
 using a LAN address. The workflow enables HTTP for this testing APK; use HTTPS
