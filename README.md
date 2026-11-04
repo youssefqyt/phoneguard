@@ -364,6 +364,20 @@ The mobile tests cover the formatting helpers every screen depends on (durations
 
 ## Deployment
 
+### CI and container image publishing
+
+The `Backend CI and image` GitHub Actions workflow runs on pull requests and
+pushes to `main`. It generates Prisma Client, type-checks, runs backend tests,
+and builds the API before building its Docker image. Pull requests build the
+image without publishing it. A successful push to `main` publishes the image
+to GitHub Container Registry (GHCR) as
+`ghcr.io/youssefqyt/phoneguard:sha-<commit>` and `:latest`.
+
+The commit-SHA tag identifies an exact release and is preferred for deployment;
+`:latest` is a convenience tag. The package is initially private. Configure
+registry access on a deployment server before pulling it. This workflow does
+not deploy to a server; that is a separate CD step.
+
 ### Docker Compose (single host)
 
 ```bash
@@ -373,6 +387,8 @@ docker compose --profile full up -d --build
 ```
 
 This starts Postgres, Redis and the API (the API container applies `prisma migrate deploy` on boot). The image is a multi-stage build running as a non-root user with a built-in healthcheck.
+The Compose file builds this image from local source; it does not pull the
+GHCR image published by CI.
 
 ### Managed platforms
 
