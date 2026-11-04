@@ -1,0 +1,448 @@
+// PhoneGuard — Prisma schema
+// Digital wellbeing / screen-time control / parental control platform.
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  PARENT
+  CHILD
+  ADULT
+}
+
+enum HouseholdRole {
+  OWNER
+  PARENT
+  CHILD
+  VIEWER
+}
+
+enum MemberStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
+
+enum Platform {
+  ANDROID
+  IOS
+  WEB
+  UNKNOWN
+}
+
+enum DeviceStatus {
+  PENDING
+  PAIRED
+  REVOKED
+}
+
+/// The kind of control a rule enforces.
+enum RuleType {
+  APP_LIMIT // daily allowance for one app / package
+  CATEGORY_LIMIT // daily allowance for a whole app category
+  BLOCKLIST // hard block specific packages
+  SCHEDULE // time-of-day window (curfew / school hours)
+  BEDTIME // wind-down reminder + block
+}
+
+enum RuleAction {
+  BLOCK
+  WARN
+  REMIND
+}
+
+enum FocusStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum RewardType {
+  SCREEN_TIME // grants extra minutes
+  APP_UNLOCK // grants temporary access to a blocked app
+  PRIVILEGE // non-screen reward (points only)
+}
+
+enum RedemptionStatus {
+  REQUESTED
+  APPROVED
+  DENIED
+  FULFILLED
+  EXPIRED
+}
+
+enum NotificationType {
+  LIMIT_REACHED
+  FOCUS_STARTED
+  FOCUS_ENDED
+  REWARD_REQUESTED
+  REWARD_APPROVED
+  REWARD_DENIED
+  DEVICE_PAIRED
+  SYSTEM
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  avatarUrl    String?
+  role         UserRole @default(ADULT)
+  timezone     String   @default("UTC")
+  locale       String   @default("en")
+  isActive     Boolean  @default(true)
+
+  // Daily point balance is derived from the ledger, cached here for fast reads.
+  pointsBalance Int @default(0)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  lastLogin DateTime?
+
+  households     HouseholdMember[]
+  ownedHouses    Household[]       @relation("HouseholdOwner")
+  devices        Device[]
+  refreshTokens  RefreshToken[]
+  focusSessions  FocusSession[]
+  redemptions    RewardRedemption[]
+  pointsLedger   PointsLedger[]
+  notifications  Notification[]
+  createdInvites HouseholdInvite[] @relation("InviteCreator")
+
+  @@index([role])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  deviceId  String?
+  userAgent String?
+  ip        String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ---------------------------------------------------------------------------
+// Households (family groups)
+// ---------------------------------------------------------------------------
+
+model Household {
+  id      String @id @default(cuid())
+  name    String
+  ownerId String
+  owner   User   @relation("HouseholdOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members HouseholdMember[]
+  invites HouseholdInvite[]
+  devices Device[]
+  rules   Rule[]
+  rewards Reward[]
+
+  @@index([ownerId])
+}
+
+model HouseholdMember {
+  id          String        @id @default(cuid())
+  householdId String
+  household   Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        HouseholdRole @default(CHILD)
+  status      MemberStatus  @default(ACTIVE)
+  joinedAt    DateTime      @default(now())
+
+  @@unique([householdId, userId])
+  @@index([userId])
+}
+
+model HouseholdInvite {
+  id          String   @id @default(cuid())
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  code        String   @unique
+  email       String?
+  role        HouseholdRole @default(CHILD)
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdById String
+  createdBy   User     @relation("InviteCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([householdId])
+}
+
+// ---------------------------------------------------------------------------
+// Devices
+// ---------------------------------------------------------------------------
+
+model Device {
+  id          String       @id @default(cuid())
+  ownerId     String
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  householdId String?
+  household   Household?   @relation(fields: [householdId], references: [id], onDelete: SetNull)
+
+  name        String
+  model       String?
+  manufacturer String?
+  platform    Platform     @default(ANDROID)
+  osVersion   String?
+  appVersion  String?
+  status      DeviceStatus @default(PENDING)
+
+  /// Short-lived code shown on the child device and entered by the guardian.
+  pairingCode String?   @unique
+  pairedAt    DateTime?
+
+  pushToken   String?
+  lastSeenAt  DateTime?
+  /// Cumulative minutes of screen time reported for this device today (fast badge reads).
+  lastSyncedAt DateTime?
+
+  isManaged Boolean @default(false) // enrolled as a managed/child device
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usageDaily   AppUsageDaily[]
+  usageEvents  AppUsageEvent[]
+  rules        Rule[]
+  focusSessions FocusSession[]
+
+  @@index([ownerId])
+  @@index([householdId])
+}
+
+// ---------------------------------------------------------------------------
+// Usage telemetry
+// ---------------------------------------------------------------------------
+
+model AppUsageDaily {
+  id          String   @id @default(cuid())
+  deviceId    String
+  device      Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  /// Calendar day in UTC, normalised to midnight.
+  date        DateTime
+  packageName String
+  appName     String?
+  category    String?
+  /// Total foreground time in seconds for the day.
+  totalSeconds Int     @default(0)
+  launches     Int     @default(0)
+  lastUsedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([deviceId, packageName, date])
+  @@index([deviceId, date])
+  @@index([date])
+}
+
+/// Optional raw session events (start/stop) for timeline views.
+model AppUsageEvent {
+  id          String   @id @default(cuid())
+  deviceId    String
+  device      Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  packageName String
+  appName     String?
+  startedAt   DateTime
+  endedAt     DateTime?
+  durationSeconds Int  @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([deviceId, startedAt])
+}
+
+/// Daily totals per device (screen time, unlocks, pickups) for fast dashboards.
+model DailySummary {
+  id             String   @id @default(cuid())
+  deviceId       String
+  date           DateTime
+  screenTimeSeconds Int   @default(0)
+  pickups        Int      @default(0)
+  notifications  Int      @default(0)
+  unlocks        Int      @default(0)
+  focusSeconds   Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([deviceId, date])
+  @@index([date])
+}
+
+// ---------------------------------------------------------------------------
+// Rules / policies
+// ---------------------------------------------------------------------------
+
+model Rule {
+  id          String   @id @default(cuid())
+  householdId String?
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  deviceId    String?
+  device      Device?  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  name        String
+  type        RuleType
+  action      RuleAction @default(BLOCK)
+  enabled     Boolean  @default(true)
+  /// Type-specific configuration.
+  /// APP_LIMIT:      { packages: ["com.instagram.android"], dailyLimitMinutes: 30 }
+  /// CATEGORY_LIMIT: { category: "SOCIAL", dailyLimitMinutes: 45 }
+  /// BLOCKLIST:      { packages: ["com.tiktok..."] }
+  /// SCHEDULE:       { days: [1..7], startTime: "22:00", endTime: "07:00" }
+  /// BEDTIME:        { days: [1..7], startTime: "21:30", endTime: "07:00" }
+  config      Json
+  priority    Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([householdId])
+  @@index([deviceId])
+  @@index([type])
+}
+
+/// Materialised per-app daily limit counters, updated as usage is ingested.
+model LimitProgress {
+  id          String   @id @default(cuid())
+  deviceId    String
+  ruleId      String
+  packageName String
+  date        DateTime
+  usedSeconds Int      @default(0)
+  /// Extra seconds granted by an approved reward for this day.
+  bonusSeconds Int     @default(0)
+  blockedAt   DateTime?
+  updatedAt   DateTime @updatedAt
+
+  @@unique([deviceId, ruleId, packageName, date])
+  @@index([deviceId, date])
+}
+
+// ---------------------------------------------------------------------------
+// Focus sessions
+// ---------------------------------------------------------------------------
+
+model FocusSession {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId  String?
+  device    Device?     @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  label     String?
+  plannedMinutes Int
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  status    FocusStatus @default(ACTIVE)
+  /// Packages that were blocked during the session.
+  blockedPackages Json @default("[]")
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, status])
+  @@index([deviceId])
+}
+
+// ---------------------------------------------------------------------------
+// Rewards / gamification
+// ---------------------------------------------------------------------------
+
+model Reward {
+  id          String     @id @default(cuid())
+  householdId String
+  household   Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  type        RewardType @default(SCREEN_TIME)
+  pointCost   Int
+  /// For SCREEN_TIME: minutes granted. For APP_UNLOCK: minutes of access.
+  valueMinutes Int       @default(0)
+  /// For APP_UNLOCK: which package is unlocked.
+  targetPackage String?
+  isActive    Boolean    @default(true)
+  icon        String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  redemptions RewardRedemption[]
+
+  @@index([householdId])
+}
+
+model RewardRedemption {
+  id         String           @id @default(cuid())
+  rewardId   String
+  reward     Reward           @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status     RedemptionStatus @default(REQUESTED)
+  pointCost  Int
+  note       String?
+  decidedById String?
+  decidedAt  DateTime?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model PointsLedger {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Positive = earned, negative = spent.
+  delta     Int
+  reason    String
+  refType   String?
+  refId     String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType @default(SYSTEM)
+  title     String
+  body      String
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt])
+  @@index([createdAt])
+}

@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: phoneguard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-phoneguard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-phoneguard}
+      POSTGRES_DB: ${POSTGRES_DB:-phoneguard}
+    ports:
+      # Host port defaults to 55432 to avoid clashing with a native
+      # PostgreSQL service that may already own 5432 on the host.
+      - "${POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - phoneguard_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-phoneguard} -d ${POSTGRES_DB:-phoneguard}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: phoneguard-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-56379}:6379"
+    volumes:
+      - phoneguard_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: phoneguard-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-phoneguard}:${POSTGRES_PASSWORD:-phoneguard}@postgres:5432/${POSTGRES_DB:-phoneguard}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-me-access}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-refresh}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-30d}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    ports:
+      - "${API_PORT:-3000}:3000"
+    profiles:
+      - full
+
+volumes:
+  phoneguard_pgdata:
+  phoneguard_redisdata:

@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">PhoneGuard</string>
+    <string name="accessibility_service_label">PhoneGuard app limits</string>
+    <string name="accessibility_service_description">PhoneGuard watches which app is in the foreground so it can enforce the screen-time limits and schedules a parent has set. It does not read the content on your screen.</string>
+</resources>
