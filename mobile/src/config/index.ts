@@ -1,25 +1,24 @@
 import { Platform } from 'react-native';
+import { BUILD_API_URL } from './buildConfig';
 
 /**
  * Runtime configuration.
  *
  * `API_URL` is resolved in this order:
- *   1. `API_URL` from the environment (react-native-config / EAS secrets)
- *   2. a sensible development default
+ *   1. `API_URL` from the environment
+ *   2. the URL embedded in the Android build
+ *   3. a sensible simulator/emulator default
  *
  * The Android emulator reaches the host machine on 10.0.2.2, the iOS
- * simulator on localhost, and a physical device needs your LAN IP — set
- * `API_URL` for that case (see `.env.example`).
+ * simulator on localhost. A physical device needs a reachable API URL.
  */
 
 function resolveDevHost(): string {
-  if (Platform.OS === 'android') return 'http:// 10.150.208.156:3000/api/v1';
+  if (Platform.OS === 'android') return 'http://10.0.2.2:3000/api/v1';
   return 'http://localhost:3000/api/v1';
 }
 
-declare const process:
-  | { env?: Record<string, string | undefined> }
-  | undefined;
+declare const process: { env?: Record<string, string | undefined> } | undefined;
 
 function envValue(key: string): string | undefined {
   try {
@@ -29,7 +28,8 @@ function envValue(key: string): string | undefined {
   }
 }
 
-export const API_URL: string = envValue('API_URL') ?? resolveDevHost();
+export const API_URL: string =
+  envValue('API_URL') ?? BUILD_API_URL ?? resolveDevHost();
 
 /** Polling intervals (ms) for background-ish refreshes. */
 export const REFRESH_INTERVALS = {

@@ -180,6 +180,8 @@ npm run android               # or: npm run ios
 
 > The mobile app requires the Android SDK (or Xcode) to build — see
 > [Platform capabilities and limits](#platform-capabilities-and-limits).
+> To build an installable Android APK without setting up the SDK locally, use
+> the [GitHub Actions APK workflow](mobile/README.md#build-an-apk-with-github-actions).
 
 ---
 

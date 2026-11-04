@@ -20,15 +20,30 @@ the native modules described below.
 
 ### API base URL
 
-`src/config/index.ts` resolves `API_URL` from the environment and otherwise
-falls back to:
+`src/config/index.ts` resolves `API_URL` from the environment, then the URL
+embedded in the Android build, and otherwise falls back to:
 
 | Target | Default |
 | --- | --- |
 | Android emulator | `http://10.0.2.2:3000/api/v1` |
 | iOS simulator | `http://localhost:3000/api/v1` |
 
-A physical device needs your machine's LAN IP — see `.env.example`.
+A physical device needs an API URL reachable from the phone, such as your
+computer's LAN IP. A `.env` file is not loaded automatically by this project.
+
+### Build an APK with GitHub Actions
+
+Push the project, including `.github/workflows/android-apk.yml`, to GitHub.
+Open **Actions → Build Android APK → Run workflow**, then enter the API base
+URL reachable by your phone, including `/api/v1` (for example
+`http://192.168.1.20:3000/api/v1`). When the workflow finishes, open its run,
+download the `phoneguard-android-apk` artifact, extract it, and install the APK
+on your Android phone.
+
+Keep the API running and the phone on the same Wi-Fi as your computer when
+using a LAN address. The workflow enables HTTP for this testing APK; use HTTPS
+for a public or production deployment. The APK is signed with the project's
+debug key and is intended for testing, not Play Store distribution.
 
 ## Scripts
 
