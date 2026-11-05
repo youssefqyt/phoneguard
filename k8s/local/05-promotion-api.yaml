@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: ghcr.io/youssefqyt/phoneguard:sha-1fc7db8
+          image: ghcr.io/youssefqyt/phoneguard:sha-91ee2a6
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
