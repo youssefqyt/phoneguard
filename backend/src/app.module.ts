@@ -19,6 +19,8 @@ import { RewardsModule } from './modules/rewards/rewards.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { HealthController } from './health.controller';
 
+import { MetricsController } from './metrics/metrics.controller';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -47,7 +49,7 @@ import { HealthController } from './health.controller';
     RewardsModule,
     NotificationsModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, MetricsController],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },

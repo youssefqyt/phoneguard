@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: phoneguard-api
+  namespace: phoneguard
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - phoneguard.localhost
+      secretName: phoneguard-local-tls
+  rules:
+    - host: phoneguard.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: phoneguard-api
+                port:
+                  number: 3000

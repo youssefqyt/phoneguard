@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phoneguard-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phoneguard-api
+  template:
+    metadata:
+      labels:
+        app: phoneguard-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/youssefqyt/phoneguard:sha-1fc7db8
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3000"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: phoneguard-db
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              value: redis://redis:6379
+            - name: JWT_ACCESS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: phoneguard-api
+                  key: JWT_ACCESS_SECRET
+            - name: JWT_REFRESH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: phoneguard-api
+                  key: JWT_REFRESH_SECRET
+            - name: JWT_ACCESS_TTL
+              value: 15m
+            - name: JWT_REFRESH_TTL
+              value: 30d
+            - name: CORS_ORIGINS
+              value: "*"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phoneguard-api
+spec:
+  type: ClusterIP
+  selector:
+    app: phoneguard-api
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
