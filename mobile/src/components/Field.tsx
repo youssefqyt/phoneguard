@@ -16,6 +16,7 @@ export function Field({ label, hint, error, style, ...rest }: FieldProps) {
       </AppText>
       <TextInput
         {...rest}
+        accessibilityLabel={rest.accessibilityLabel ?? label}
         placeholderTextColor={colors.textFaint}
         style={[
           styles.input,

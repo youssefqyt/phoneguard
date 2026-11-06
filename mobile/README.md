@@ -5,11 +5,10 @@ React Native 0.88 · TypeScript · React Navigation 7 · React Query 5 · Zustan
 This is the client half of PhoneGuard. For the full product overview, API
 reference, data model and deployment guide, see the [root README](../README.md).
 
-## Getting started
+## Native app
 
 ```bash
 npm install
-cp .env.example .env     # optional: point API_URL at your LAN IP for a device
 npm start                # Metro
 npm run android          # or: npm run ios
 ```
@@ -18,10 +17,44 @@ Building requires the Android SDK (JDK 17) or Xcode. The JS layer is fully
 functional on its own, but the usage-tracking and app-blocking features need
 the native modules described below.
 
+### Browser app
+
+The existing React Native screens also run in a browser using React Native Web
+and Vite; this is the same app and API, not a separate mockup.
+
+```powershell
+npm install
+npm run web
+```
+
+Open `http://127.0.0.1:5173`. The browser defaults to
+`http://localhost:3000/api/v1`, so start the backend on the same computer. To
+use a different reachable API, create `.env.local` from `.env.example` and set
+`VITE_API_URL` to the API base URL (including `/api/v1`), then restart Vite.
+Do not put credentials in the URL or commit `.env.local`.
+
+Create and preview a production web bundle with:
+
+```powershell
+npm run web:build
+npm run web:preview
+```
+
+The generated bundle is in `mobile/dist`. For a deployed web app, configure
+`VITE_API_URL` to an HTTPS API origin reachable by its users and configure the
+API's CORS allowlist for the web origin. The development API must also allow
+the Vite origin (`http://127.0.0.1:5173`) in CORS.
+
+Browser authentication tokens are stored in `sessionStorage`, not persistent
+`localStorage`, and are removed when the browser tab session ends. This reduces
+long-lived persistence but is not equivalent to secure native storage: scripts
+running on the site can access the session. Use HTTPS and protect the web app
+from cross-site scripting before using real accounts.
+
 ### API base URL
 
-`src/config/index.ts` resolves `API_URL` from the environment, then the URL
-embedded in the Android build, and otherwise falls back to:
+Native `src/config/index.ts` resolves `API_URL` from the build environment,
+then the URL embedded in the Android build, and otherwise falls back to:
 
 | Target | Default |
 | --- | --- |
@@ -30,15 +63,19 @@ embedded in the Android build, and otherwise falls back to:
 
 A physical device needs an API URL reachable from the phone, such as your
 computer's LAN IP. A `.env` file is not loaded automatically by this project.
+For browser development, configure `VITE_API_URL` as described above; the
+browser defaults to `http://localhost:3000/api/v1` and must not use the Android
+emulator-only `10.0.2.2` address.
 
 ### Build an APK with GitHub Actions
 
 Push the project, including `.github/workflows/android-apk.yml`, to GitHub.
 Save the API base URL reachable by your phone as a repository Actions variable
 named `PHONEGUARD_API_URL` (or as a repository secret with the same name). For
-example, use `http://192.168.1.20:3000/api/v1`, replacing the IP with your
-computer's Wi-Fi IPv4 address. Add it once under **Settings → Secrets and
-variables → Actions**; you do not need to enter it each time you build.
+example, use `http://<computer-LAN-address>:3000/api/v1`, replacing the
+placeholder with your computer's reachable Wi-Fi address. Add it once under
+**Settings → Secrets and variables → Actions**; you do not need to enter it
+each time you build.
 
 Then open **Actions → Build Android APK → Run workflow**. You can enter the
 phone-reachable API URL in the `api_url` input; it overrides the saved variable
@@ -63,6 +100,9 @@ debug key and is intended for testing, not Play Store distribution.
 | --- | --- |
 | `npm start` | Start the Metro bundler |
 | `npm run android` / `npm run ios` | Build and install on a device or emulator |
+| `npm run web` | Start the browser app on `127.0.0.1:5173` |
+| `npm run web:build` | Build the browser app into `dist/` |
+| `npm run web:preview` | Preview the production browser build |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
 | `npm test` | Jest unit + component tests |
@@ -89,15 +129,20 @@ src/
 
 `UsageBridge` (`src/native/UsageBridge.ts`) is the platform-agnostic contract.
 Every call degrades to a safe no-op when the native module is missing, so the
-UI keeps working on simulators and on platforms that lack the capability.
+UI keeps working on simulators and platforms that lack the capability. The
+browser shows these capabilities as unavailable instead of implying they work.
 
-| Capability | Android | iOS |
-| --- | --- | --- |
-| Read per-app usage | ✅ `UsageStatsManager` | ❌ needs the Family Controls entitlement |
-| Block apps | ✅ Accessibility service | ❌ needs `ManagedSettings` |
-| Schedules | ✅ Accessibility service | ❌ |
+| Capability | Android | iOS | Web |
+| --- | --- | --- | --- |
+| Read per-app usage | ✅ `UsageStatsManager` | ❌ needs the Family Controls entitlement | ❌ |
+| Block apps | ✅ Accessibility service | ❌ needs `ManagedSettings` | ❌ |
+| Schedules | ✅ Accessibility service | ❌ | ❌ |
 
 iOS ships an honest stub that reports "unavailable" rather than pretending.
+The browser can manage accounts, households, rules, rewards and focus timers
+through the API, but cannot inspect installed apps, collect device usage,
+enforce limits, or block apps. Browser-created devices are registered as
+`WEB`; use the Android app for device-level collection and enforcement.
 See [Platform capabilities and limits](../README.md#platform-capabilities-and-limits)
 in the root README for the full picture, including App Store and Play Store
 distribution caveats.
@@ -118,6 +163,7 @@ iOS lives in `ios/PhoneGuard/`: `PhoneGuardModule.swift` plus
 ## Security note
 
 Tokens are stored via `src/utils/storage.ts`, which currently wraps
-`AsyncStorage`. Before shipping, swap that one module for
-`react-native-keychain` (or an encrypted store) — nothing else in the app needs
-to change because every caller goes through it.
+`AsyncStorage` on native platforms; browser builds use tab-scoped
+`sessionStorage`. Before shipping native builds, swap the native implementation
+for `react-native-keychain` (or an encrypted store) — nothing else in the app
+needs to change because every caller goes through this module.

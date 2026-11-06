@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
@@ -22,6 +22,7 @@ import { useDeviceSelection } from '../../hooks/useDeviceSelection';
 import type { LimitProgress, Rule, RuleConfig } from '../../api/types';
 import type { RootStackParamList } from '../../navigation/types';
 import { colors, spacing } from '../../theme';
+import { showAlert } from '../../utils/dialog';
 import { formatDuration, minutesToTime } from '../../utils/format';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -89,7 +90,7 @@ export function LimitsScreen() {
   );
 
   function confirmDelete(rule: Rule) {
-    Alert.alert(
+    showAlert(
       'Delete rule',
       `“${rule.name}” will be removed for everyone.`,
       [

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
@@ -19,6 +19,7 @@ import { useSettingsStore } from '../../store/settingsStore';
 import { API_URL, APP_VERSION } from '../../config';
 import type { RootStackParamList } from '../../navigation/types';
 import { colors, spacing } from '../../theme';
+import { showAlert } from '../../utils/dialog';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -46,9 +47,9 @@ export function SettingsScreen() {
     try {
       await usersApi.updateProfile({ displayName: name });
       await refreshProfile();
-      Alert.alert('Saved', 'Your display name has been updated.');
+      showAlert('Saved', 'Your display name has been updated.');
     } catch (err) {
-      Alert.alert(
+      showAlert(
         'Could not save',
         err instanceof Error ? err.message : 'Please try again.',
       );
@@ -59,7 +60,7 @@ export function SettingsScreen() {
 
   async function onChangePassword() {
     if (newPassword.length < 8) {
-      Alert.alert('Too short', 'Use at least 8 characters.');
+      showAlert('Too short', 'Use at least 8 characters.');
       return;
     }
     setSavingPassword(true);
@@ -68,9 +69,9 @@ export function SettingsScreen() {
       setCurrentPassword('');
       setNewPassword('');
       setShowPassword(false);
-      Alert.alert('Password changed', 'Use your new password next time you sign in.');
+      showAlert('Password changed', 'Use your new password next time you sign in.');
     } catch (err) {
-      Alert.alert(
+      showAlert(
         'Could not change password',
         err instanceof Error ? err.message : 'Check your current password.',
       );
@@ -80,7 +81,7 @@ export function SettingsScreen() {
   }
 
   function confirmLogout() {
-    Alert.alert('Sign out', 'You will need to sign in again to see your data.', [
+    showAlert('Sign out', 'You will need to sign in again to see your data.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Sign out',
@@ -178,9 +179,14 @@ export function SettingsScreen() {
       <Card title="Data collection">
         <SwitchRow
           label="Background usage sync"
-          description="Periodically upload screen-time data from this device"
+          description={
+            Platform.OS === 'web'
+              ? 'Unavailable in a browser; use the Android app to collect screen-time data.'
+              : 'Periodically upload screen-time data from this device'
+          }
           value={collectorEnabled}
           onValueChange={value => void setCollectorEnabled(value)}
+          disabled={Platform.OS === 'web'}
         />
       </Card>
 

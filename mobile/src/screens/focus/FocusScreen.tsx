@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import {
   AppText,
   Button,
@@ -23,6 +23,7 @@ import { useDeviceSelection } from '../../hooks/useDeviceSelection';
 import UsageBridge from '../../native/UsageBridge';
 import { colors, spacing } from '../../theme';
 import { formatCountdown, formatDateKey, formatMinutes } from '../../utils/format';
+import { showAlert } from '../../utils/dialog';
 
 const DURATIONS = [15, 25, 45, 60, 90];
 
@@ -98,7 +99,7 @@ export function FocusScreen() {
         await UsageBridge.setBlockedApps(blockedPackages);
       }
     } catch (err) {
-      Alert.alert(
+      showAlert(
         'Could not start',
         err instanceof Error ? err.message : 'Please try again.',
       );
@@ -111,10 +112,10 @@ export function FocusScreen() {
       const result = await stopFocus.mutateAsync(session.id);
       await UsageBridge.clearEnforcement();
       if (result?.pointsAwarded) {
-        Alert.alert('Focus complete', `You earned ${result.pointsAwarded} points 🎉`);
+        showAlert('Focus complete', `You earned ${result.pointsAwarded} points 🎉`);
       }
     } catch (err) {
-      Alert.alert(
+      showAlert(
         'Could not stop',
         err instanceof Error ? err.message : 'Please try again.',
       );
@@ -123,7 +124,7 @@ export function FocusScreen() {
 
   async function onCancel() {
     if (!session) return;
-    Alert.alert('Cancel session', 'Your progress will not count.', [
+    showAlert('Cancel session', 'Your progress will not count.', [
       { text: 'Keep going', style: 'cancel' },
       {
         text: 'Cancel session',
@@ -137,7 +138,14 @@ export function FocusScreen() {
   }
 
   return (
-    <Screen title="Focus" subtitle="Block distractions for a set time.">
+    <Screen
+      title="Focus"
+      subtitle={
+        Platform.OS === 'web'
+          ? 'Use a focus timer. Browser builds cannot block apps on a device.'
+          : 'Block distractions for a set time.'
+      }
+    >
       <StatRow>
         <StatTile
           label="Sessions"
@@ -164,7 +172,9 @@ export function FocusScreen() {
 
           {blockedPackages.length > 0 ? (
             <AppText variant="caption" tone="faint" style={styles.blocked}>
-              {blockedPackages.length} app(s) blocked while this runs
+              {Platform.OS === 'web'
+                ? 'Blocking is only enforced by the Android app.'
+                : `${blockedPackages.length} app(s) blocked while this runs`}
             </AppText>
           ) : null}
 
@@ -209,7 +219,9 @@ export function FocusScreen() {
           />
           <AppText variant="caption" tone="faint" style={styles.hint}>
             {blockedPackages.length > 0
-              ? `${blockedPackages.length} app(s) from your rules will be blocked.`
+              ? Platform.OS === 'web'
+                ? `${blockedPackages.length} app(s) are listed in your rules, but browser builds cannot enforce blocks.`
+                : `${blockedPackages.length} app(s) from your rules will be blocked.`
               : 'Add an app limit first to have apps blocked automatically.'}
           </AppText>
         </Card>

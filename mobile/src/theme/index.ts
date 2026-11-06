@@ -15,7 +15,7 @@ export const colors = {
   // Text
   text: '#F5F7FF',
   textMuted: '#9AA5C4',
-  textFaint: '#6B7699',
+  textFaint: '#8792B0',
 
   // Brand
   primary: '#6C7BFF',

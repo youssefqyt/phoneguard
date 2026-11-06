@@ -51,7 +51,11 @@ export function Button({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === 'primary' ? '#FFFFFF' : colors.primary}
+          color={
+            variant === 'primary' || variant === 'danger'
+              ? '#FFFFFF'
+              : colors.primary
+          }
         />
       ) : (
         <View style={styles.content}>
@@ -124,8 +128,8 @@ const variantStyles: Record<
   NonNullable<ButtonProps['variant']>,
   ViewStyle
 > = {
-  primary: { backgroundColor: colors.primary },
+  primary: { backgroundColor: colors.primaryDark },
   secondary: { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
   ghost: { backgroundColor: 'transparent' },
-  danger: { backgroundColor: colors.danger },
+  danger: { backgroundColor: '#C72F50' },
 };

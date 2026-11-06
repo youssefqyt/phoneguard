@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import {
   AppText,
   Button,
@@ -26,6 +26,7 @@ import {
 import { useAuthStore } from '../../store/authStore';
 import type { Redemption, Reward, RewardType } from '../../api/types';
 import { colors, spacing } from '../../theme';
+import { showAlert } from '../../utils/dialog';
 import { formatDateKey, formatMinutes } from '../../utils/format';
 
 const REWARD_ICONS: Record<RewardType, string> = {
@@ -85,7 +86,7 @@ export function RewardsScreen() {
 
   async function onRedeem(reward: Reward) {
     if (balance < reward.pointCost) {
-      Alert.alert(
+      showAlert(
         'Not enough points',
         `You need ${reward.pointCost - balance} more points for this reward.`,
       );
@@ -94,9 +95,9 @@ export function RewardsScreen() {
     try {
       await redeem.mutateAsync({ id: reward.id });
       await refreshProfile();
-      Alert.alert('Request sent', 'A guardian will review it shortly.');
+      showAlert('Request sent', 'A guardian will review it shortly.');
     } catch (err) {
-      Alert.alert(
+      showAlert(
         'Could not redeem',
         err instanceof Error ? err.message : 'Please try again.',
       );
@@ -108,7 +109,7 @@ export function RewardsScreen() {
       await decide.mutateAsync({ id: redemption.id, approve });
       await refreshProfile();
     } catch (err) {
-      Alert.alert(
+      showAlert(
         'Could not update',
         err instanceof Error ? err.message : 'Please try again.',
       );
@@ -118,7 +119,7 @@ export function RewardsScreen() {
   async function onCreate() {
     const pointCost = parseInt(cost, 10);
     if (!title.trim() || Number.isNaN(pointCost) || pointCost <= 0) {
-      Alert.alert('Check the form', 'A title and a positive point cost are required.');
+      showAlert('Check the form', 'A title and a positive point cost are required.');
       return;
     }
     try {
@@ -131,7 +132,7 @@ export function RewardsScreen() {
       setTitle('');
       setShowForm(false);
     } catch (err) {
-      Alert.alert(
+      showAlert(
         'Could not create',
         err instanceof Error ? err.message : 'Please try again.',
       );
@@ -141,11 +142,11 @@ export function RewardsScreen() {
   async function onAward() {
     const amount = parseInt(awardAmount, 10);
     if (!Number.isInteger(amount) || amount === 0) {
-      Alert.alert('Check the amount', 'Enter a non-zero number of points.');
+      showAlert('Check the amount', 'Enter a non-zero number of points.');
       return;
     }
     if (awardReason.trim().length < 2) {
-      Alert.alert('Add a reason', 'A short reason keeps the ledger meaningful.');
+      showAlert('Add a reason', 'A short reason keeps the ledger meaningful.');
       return;
     }
     try {
@@ -155,9 +156,9 @@ export function RewardsScreen() {
         targetUserId: awardTo ?? undefined,
       });
       setAwardReason('');
-      Alert.alert('Points awarded', `${amount > 0 ? '+' : ''}${amount} points logged.`);
+      showAlert('Points awarded', `${amount > 0 ? '+' : ''}${amount} points logged.`);
     } catch (err) {
-      Alert.alert(
+      showAlert(
         'Could not award points',
         err instanceof Error ? err.message : 'Please try again.',
       );

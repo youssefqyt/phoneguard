@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   AppText,
@@ -164,7 +164,15 @@ export function RuleEditorScreen({ route, navigation }: Props) {
   }
 
   return (
-    <Screen scroll title="New rule" subtitle="Limits apply to the selected device.">
+    <Screen
+      scroll
+      title="New rule"
+      subtitle={
+        Platform.OS === 'web'
+          ? 'Configure rules for the selected device. Enforcement requires the Android app.'
+          : 'Limits apply to the selected device.'
+      }
+    >
       <Segmented<EditorType>
         value={type}
         onChange={setType}
@@ -187,8 +195,9 @@ export function RuleEditorScreen({ route, navigation }: Props) {
         <Card title="Apps" subtitle="Tap to select">
           {suggestions.length === 0 ? (
             <AppText variant="caption" tone="muted">
-              No apps detected. Usage access may not be granted yet — you can
-              add a package name below.
+              {Platform.OS === 'web'
+                ? 'Installed apps cannot be detected in a browser. Add an Android package name below to configure the rule for a managed device.'
+                : 'No apps detected. Usage access may not be granted yet — you can add a package name below.'}
             </AppText>
           ) : (
             suggestions.slice(0, 40).map(app => {

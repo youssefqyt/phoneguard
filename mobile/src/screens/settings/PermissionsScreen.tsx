@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Alert, Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   AppText,
@@ -13,6 +13,7 @@ import { useDeviceSelection } from '../../hooks/useDeviceSelection';
 import UsageBridge, { type PlatformCapabilities } from '../../native/UsageBridge';
 import { colors, spacing } from '../../theme';
 import { todayKey } from '../../utils/format';
+import { showAlert } from '../../utils/dialog';
 
 /**
  * Permissions & sync.
@@ -69,14 +70,14 @@ export function PermissionsScreen() {
 
   async function onSync() {
     if (!deviceId) {
-      Alert.alert('No device selected', 'Register and pair a device first.');
+      showAlert('No device selected', 'Register and pair a device first.');
       return;
     }
     const date = todayKey();
     try {
       const collection = await UsageBridge.queryUsage(date);
       if (collection.apps.length === 0) {
-        Alert.alert(
+        showAlert(
           'Nothing to sync',
           UsageBridge.isAvailable()
             ? 'The device reported no app usage for today yet.'
@@ -102,7 +103,7 @@ export function PermissionsScreen() {
       });
       setLastSync(`${result.accepted} app(s) uploaded for ${date}`);
     } catch (err) {
-      Alert.alert(
+      showAlert(
         'Sync failed',
         err instanceof Error ? err.message : 'Please try again.',
       );
@@ -115,7 +116,7 @@ export function PermissionsScreen() {
   return (
     <Screen
       title="Permissions"
-      subtitle={`${Platform.OS === 'ios' ? 'iOS' : 'Android'} · v1.0.0`}
+      subtitle={`${Platform.OS === 'web' ? 'Web browser' : Platform.OS === 'ios' ? 'iOS' : 'Android'} · v1.0.0`}
       headerRight={
         <Button
           label="Re-check"
@@ -127,6 +128,17 @@ export function PermissionsScreen() {
         />
       }
     >
+      {Platform.OS === 'web' ? (
+        <Card title="Browser limitations">
+          <AppText variant="caption" tone="muted" style={styles.syncHelp}>
+            Browser security does not allow PhoneGuard to inspect installed
+            apps, read device screen time, or enforce app blocks. The web app
+            manages your account and family data; use the Android app for
+            device-level collection and controls.
+          </AppText>
+        </Card>
+      ) : null}
+
       <PermissionCard
         title="Usage access"
         description="Reads per-app screen time, launches and pickups so the dashboard and limits have data to work with."
@@ -200,7 +212,7 @@ export function PermissionsScreen() {
           label="Sync now"
           variant="secondary"
           loading={ingest.isPending}
-          disabled={!deviceId}
+          disabled={!deviceId || Platform.OS === 'web'}
           onPress={() => void onSync()}
         />
       </Card>

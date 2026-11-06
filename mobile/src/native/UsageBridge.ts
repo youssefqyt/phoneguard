@@ -89,7 +89,9 @@ const unavailableCapabilities: PlatformCapabilities = {
   hasAccessibilityPermission: false,
   requiresScreenTimeEntitlement: Platform.OS === 'ios',
   reason:
-    Platform.OS === 'ios'
+    Platform.OS === 'web'
+      ? 'Browser builds cannot read device usage or enforce app blocks. Use the Android app for device-level collection and controls.'
+      : Platform.OS === 'ios'
       ? 'iOS requires the Screen Time (Family Controls) entitlement, which must be approved by Apple. Usage tracking and app blocking are unavailable in this build.'
       : 'The native PhoneGuard module is not available in this build.',
 };

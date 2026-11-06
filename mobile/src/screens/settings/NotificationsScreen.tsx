@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -15,6 +15,7 @@ import { useMarkAllRead, useNotifications } from '../../api/hooks';
 import { notificationsApi } from '../../api/endpoints';
 import type { AppNotification, NotificationType } from '../../api/types';
 import { colors, spacing } from '../../theme';
+import { showAlert } from '../../utils/dialog';
 import { formatDateKey } from '../../utils/format';
 
 const ICONS: Record<NotificationType, string> = {
@@ -54,7 +55,7 @@ export function NotificationsScreen() {
     try {
       await markAllRead.mutateAsync();
     } catch (err) {
-      Alert.alert(
+      showAlert(
         'Could not update',
         err instanceof Error ? err.message : 'Please try again.',
       );

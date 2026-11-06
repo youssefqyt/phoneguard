@@ -56,6 +56,7 @@ export function Screen({
       <View
         style={[
           styles.container,
+          styles.webContent,
           { paddingTop: insets.top + spacing.md },
           padded ? styles.padded : null,
           style,
@@ -71,6 +72,7 @@ export function Screen({
       style={[styles.container, style]}
       contentContainerStyle={[
         { paddingTop: insets.top + spacing.md, paddingBottom: spacing.xxl * 2 },
+        styles.webContent,
         padded ? styles.padded : null,
         contentStyle,
       ]}
@@ -86,6 +88,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  webContent: {
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
   },
   padded: {
     paddingHorizontal: spacing.lg,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import {
   AppText,
   Avatar,
@@ -23,6 +23,7 @@ import { useAuthStore } from '../../store/authStore';
 import { APP_VERSION } from '../../config';
 import { colors, radii, spacing } from '../../theme';
 import { formatDateKey } from '../../utils/format';
+import { showAlert } from '../../utils/dialog';
 
 const ROLE_TONE: Record<string, 'primary' | 'success' | 'warning' | 'muted'> = {
   OWNER: 'primary',
@@ -52,20 +53,20 @@ export function FamilyScreen() {
   async function onRegisterDevice() {
     const name = deviceName.trim();
     if (!name) {
-      Alert.alert('Name required', 'Give the device a name so you can tell it apart.');
+      showAlert('Name required', 'Give the device a name so you can tell it apart.');
       return;
     }
     try {
       const device = await registerDevice.mutateAsync({
         name,
-        platform: 'ANDROID',
+        platform: Platform.OS === 'web' ? 'WEB' : Platform.OS === 'ios' ? 'IOS' : 'ANDROID',
         appVersion: APP_VERSION,
       });
       setPairingCode(device.pairingCode);
       setDeviceName('');
       setShowRegister(false);
     } catch (err) {
-      Alert.alert(
+      showAlert(
         'Could not register',
         err instanceof Error ? err.message : 'Please try again.',
       );
@@ -78,9 +79,9 @@ export function FamilyScreen() {
     try {
       await pairDevice.mutateAsync({ code, householdId: household?.id });
       setCodeToPair('');
-      Alert.alert('Device paired', 'It will now receive limits and schedules.');
+      showAlert('Device paired', 'It will now receive limits and schedules.');
     } catch (err) {
-      Alert.alert(
+      showAlert(
         'Pairing failed',
         err instanceof Error ? err.message : 'Check the code and try again.',
       );
@@ -89,7 +90,7 @@ export function FamilyScreen() {
 
   async function onCreateInvite() {
     if (!household) {
-      Alert.alert('No household', 'Create a household first.');
+      showAlert('No household', 'Create a household first.');
       return;
     }
     try {
@@ -99,7 +100,7 @@ export function FamilyScreen() {
       });
       setInviteCode(invite.code);
     } catch (err) {
-      Alert.alert(
+      showAlert(
         'Could not create invite',
         err instanceof Error ? err.message : 'Please try again.',
       );
@@ -107,7 +108,7 @@ export function FamilyScreen() {
   }
 
   function confirmRevoke(deviceId: string, name: string) {
-    Alert.alert('Revoke device', `${name} will stop syncing immediately.`, [
+    showAlert('Revoke device', `${name} will stop syncing immediately.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Revoke',

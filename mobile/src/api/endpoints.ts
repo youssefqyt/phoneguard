@@ -11,6 +11,7 @@ import type {
   LimitProgress,
   Paginated,
   PointsEntry,
+  Platform,
   Redemption,
   Reward,
   Rule,
@@ -145,7 +146,7 @@ export const devicesApi = {
 
   async register(input: {
     name: string;
-    platform: 'ANDROID' | 'IOS';
+    platform: Platform;
     model?: string;
     manufacturer?: string;
     osVersion?: string;
